@@ -64,8 +64,8 @@ certName=id_rsa
 #            DO NOT EDIT BELOW              #
 #############################################
 # For testing purposes - in case time is wrong due to VM snapshots
-sudo timedatectl set-ntp off
-sudo timedatectl set-ntp on
+timedatectl set-ntp off
+timedatectl set-ntp on
 
 # Move SSH certs to ~/.ssh and change permissions
 cp /home/$user/{$certName,$certName.pub} /home/$user/.ssh
@@ -77,7 +77,7 @@ if ! command -v k3sup version &> /dev/null
 then
     echo -e " \033[31;5mk3sup not found, installing\033[0m"
     curl -sLS https://get.k3sup.dev | sh
-    sudo install k3sup /usr/local/bin/
+    install k3sup /usr/local/bin/
 else
     echo -e " \033[32;5mk3sup already installed\033[0m"
 fi
@@ -87,7 +87,7 @@ if ! command -v kubectl version &> /dev/null
 then
     echo -e " \033[31;5mKubectl not found, installing\033[0m"
     curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+    install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 else
     echo -e " \033[32;5mKubectl already installed\033[0m"
 fi
@@ -102,7 +102,7 @@ done
 
 # Install policycoreutils for each node
 for newnode in "${all[@]}"; do
-  ssh $user@$newnode -i ~/.ssh/$certName sudo su <<EOF
+  ssh $user@$newnode -i ~/.ssh/$certName su <<EOF
   NEEDRESTART_MODE=a apt install policycoreutils -y
   exit
 EOF
@@ -119,7 +119,7 @@ k3sup install \
   --k3s-version $k3sVersion \
   --k3s-extra-args "--disable traefik --disable servicelb --flannel-iface=$interface --node-ip=$master1 --node-taint node-role.kubernetes.io/master=true:NoSchedule" \
   --merge \
-  --sudo \
+  --\
   --local-path $HOME/.kube/config \
   --ssh-key $HOME/.ssh/$certName \
   --context k3s-ha
@@ -138,8 +138,8 @@ scp -i ~/.ssh/$certName $HOME/kube-vip.yaml $user@$master1:~/kube-vip.yaml
 
 # Step 5: Connect to Master1 and move kube-vip.yaml
 ssh $user@$master1 -i ~/.ssh/$certName <<- EOF
-  sudo mkdir -p /var/lib/rancher/k3s/server/manifests
-  sudo mv kube-vip.yaml /var/lib/rancher/k3s/server/manifests/kube-vip.yaml
+  mkdir -p /var/lib/rancher/k3s/server/manifests
+  mv kube-vip.yaml /var/lib/rancher/k3s/server/manifests/kube-vip.yaml
 EOF
 
 # Step 6: Add new master nodes (servers) & workers
@@ -147,7 +147,7 @@ for newnode in "${masters[@]}"; do
   k3sup join \
     --ip $newnode \
     --user $user \
-    --sudo \
+    --\
     --k3s-version $k3sVersion \
     --server \
     --server-ip $master1 \
@@ -162,7 +162,7 @@ for newagent in "${workers[@]}"; do
   k3sup join \
     --ip $newagent \
     --user $user \
-    --sudo \
+    --\
     --k3s-version $k3sVersion \
     --server-ip $master1 \
     --ssh-key $HOME/.ssh/$certName \
